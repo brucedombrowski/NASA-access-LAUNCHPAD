@@ -48,16 +48,15 @@ for /f "delims=" %%H in ('git rev-parse --short HEAD 2^>nul') do (
 )
 
 REM --- First-run config setup ---
-if not exist "%SCRIPT_DIR%config.json" (
-    if exist "%SCRIPT_DIR%config.json.example" (
-        echo  First run — creating config.json from template...
-        echo First run — creating config.json from template... >> "%LOG%"
-        copy "%SCRIPT_DIR%config.json.example" "%SCRIPT_DIR%config.json" >nul
-        echo  Config created with default URL: https://id.nasa.gov/
-        echo  Edit config.json to change the target URL.
-        echo.
-    )
-)
+if exist "%SCRIPT_DIR%config.json" goto :configdone
+if not exist "%SCRIPT_DIR%config.json.example" goto :configdone
+echo  First run — creating config.json from template...
+echo First run — creating config.json from template... >> "%LOG%"
+copy "%SCRIPT_DIR%config.json.example" "%SCRIPT_DIR%config.json" >nul
+echo  Config created with default URL: https://id.nasa.gov/
+echo  Edit config.json to change the target URL.
+echo.
+:configdone
 
 REM --- Find the exe ---
 set "EXE="
