@@ -104,17 +104,11 @@ static class Program
                         if (errorText.Contains("Smartcard authentication failed", StringComparison.OrdinalIgnoreCase)
                             || errorText.Contains("No client certificate", StringComparison.OrdinalIgnoreCase))
                         {
-                            // Also grab the detail text
-                            string detail = await webView.CoreWebView2.ExecuteScriptAsync(
-                                "document.querySelector('main,article,.content,#content')?.innerText?.substring(0,300) || document.body?.innerText?.substring(0,300) || ''");
-                            detail = System.Text.Json.JsonSerializer.Deserialize<string>(detail) ?? "";
-                            detail = detail.Trim();
-
-                            statusLabel.Text = $"Auth failed \u2014 {errorText.Trim()}";
+                            statusLabel.Text = "Auth failed.";
                             statusLabel.BackColor = System.Drawing.Color.FromArgb(255, 200, 200);
                             form.Text = $"{title} \u2014 Auth Failed";
                             try { File.WriteAllText(statusFile,
-                                $"AUTH FAILED at {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n{detail}"); }
+                                $"AUTH FAILED at {DateTime.Now:yyyy-MM-dd HH:mm:ss}"); }
                             catch { }
                             return;
                         }
