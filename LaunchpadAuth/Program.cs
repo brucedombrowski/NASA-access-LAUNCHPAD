@@ -67,21 +67,27 @@ static class Program
                     statusLabel.Text = $"Loading: {navArgs.Uri}";
                 };
 
+                bool sawAuthPage = false;
+
                 webView.CoreWebView2.NavigationCompleted += (sender, navArgs) =>
                 {
                     string current = webView.CoreWebView2.Source ?? "";
                     bool onAuthPage =
-                        current.Contains("auth.", StringComparison.OrdinalIgnoreCase)
-                        || current.Contains("id.nasa.gov", StringComparison.OrdinalIgnoreCase);
+                        current.Contains("auth.", StringComparison.OrdinalIgnoreCase);
 
                     if (onAuthPage)
                     {
+                        sawAuthPage = true;
                         statusLabel.Text = "Waiting for authentication... enter your CAC PIN when prompted.";
                     }
-                    else
+                    else if (sawAuthPage)
                     {
                         statusLabel.Text = $"Authenticated \u2014 {current}";
                         form.Text = $"{title} \u2014 Authenticated";
+                    }
+                    else
+                    {
+                        statusLabel.Text = $"Loaded \u2014 {current}";
                     }
                 };
 
