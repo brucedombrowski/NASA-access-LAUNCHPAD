@@ -68,16 +68,12 @@ if not defined EXE goto :notfound
 
 :launch
 
-REM --- Cache site favicon for shortcut icon (downloaded once) ---
-set "ICON_PATH=%SCRIPT_DIR%favicon.ico"
-if not exist "!ICON_PATH!" if exist "%SCRIPT_DIR%config.json" powershell -NoProfile -Command "try{$cfg=Get-Content -Raw (Join-Path $env:SCRIPT_DIR 'config.json')|ConvertFrom-Json;$uri=[Uri]$cfg.url;$r=Invoke-WebRequest('{0}://{1}/favicon.ico'-f $uri.Scheme,$uri.Host)-UseBasicParsing -TimeoutSec 10;$b=$r.Content;$out=Join-Path $env:SCRIPT_DIR 'favicon.ico';if($b.Length -gt 100){if($b[0]-eq 0-and $b[1]-eq 0-and $b[2]-eq 1){[IO.File]::WriteAllBytes($out,$b)}elseif($b[0]-eq 0x89-and $b[1]-eq 0x50){Add-Type -A System.Drawing;$ms=[IO.MemoryStream]::new($b);$bmp=[Drawing.Bitmap]::new($ms);$ic=[Drawing.Icon]::FromHandle($bmp.GetHicon());$fs=[IO.FileStream]::new($out,'Create');$ic.Save($fs);$fs.Close();$bmp.Dispose();$ms.Dispose()}}}catch{}" >nul 2>&1
-
 REM --- Create/update desktop shortcut (uses title from config.json) ---
 set "SC_NAME=NASA access LAUNCHPAD"
 if exist "%SCRIPT_DIR%config.json" for /f "delims=" %%T in ('powershell -NoProfile -Command "(Get-Content -Raw '%SCRIPT_DIR%config.json' | ConvertFrom-Json).title" 2^>nul') do if not "%%T"=="" set "SC_NAME=%%T"
 set "SC_TARGET=%SCRIPT_DIR%launch.bat"
 set "SC_WORKDIR=%SCRIPT_DIR%."
-powershell -NoProfile -Command "$d=[Environment]::GetFolderPath('Desktop'); $lnk=Join-Path $d ($env:SC_NAME+'.lnk'); if(Test-Path $lnk){Remove-Item $lnk -Force}; $ws=New-Object -ComObject WScript.Shell; $sc=$ws.CreateShortcut($lnk); $sc.TargetPath=$env:SC_TARGET; $sc.WorkingDirectory=$env:SC_WORKDIR; $sc.Description=$env:SC_NAME; if(Test-Path $env:ICON_PATH){$sc.IconLocation=$env:ICON_PATH}; $sc.Save()" >nul 2>&1
+powershell -NoProfile -Command "$d=[Environment]::GetFolderPath('Desktop'); $lnk=Join-Path $d ($env:SC_NAME+'.lnk'); if(Test-Path $lnk){Remove-Item $lnk -Force}; $ws=New-Object -ComObject WScript.Shell; $sc=$ws.CreateShortcut($lnk); $sc.TargetPath=$env:SC_TARGET; $sc.WorkingDirectory=$env:SC_WORKDIR; $sc.Description=$env:SC_NAME; $sc.Save()" >nul 2>&1
 
 echo  Launching: %EXE%
 echo Launching: %EXE% >> "%LOG%"
