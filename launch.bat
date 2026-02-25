@@ -83,7 +83,7 @@ if not defined ISSUE_URL goto :end
 REM --- Add close timestamp as comment ---
 gh issue comment !ISSUE_URL! --body "Session closed at %DATE% %TIME%" >nul 2>&1
 
-set /p "FEEDBACK_CHOICE=  Add feedback to launch log? [Y/N]: "
+set /p "FEEDBACK_CHOICE=  Add feedback to launch log? [y/N]: "
 if /i "!FEEDBACK_CHOICE!"=="Y" (
     echo.
     set /p "FEEDBACK=  Enter feedback: "
@@ -97,7 +97,7 @@ if /i "!FEEDBACK_CHOICE!"=="Y" (
 )
 
 echo.
-set /p "CLOSE_CHOICE=  Keep this issue open? [Y/N]: "
+set /p "CLOSE_CHOICE=  Keep this issue open? [y/N]: "
 if /i "!CLOSE_CHOICE!"=="Y" (
     echo  Issue left open: !ISSUE_URL!
 ) else (
