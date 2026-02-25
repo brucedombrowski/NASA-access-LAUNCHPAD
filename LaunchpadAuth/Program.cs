@@ -1,9 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Data.Sqlite;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
 namespace LaunchpadAuth;
@@ -90,6 +95,9 @@ static class Program
                         statusLabel.Text = $"Loaded \u2014 {current}";
                     }
                 };
+
+                // Inject Edge cookies for pre-authenticated sessions
+                await EdgeCookieExtractor.InjectCookies(webView.CoreWebView2, url);
 
                 webView.CoreWebView2.Navigate(url);
             }
@@ -231,5 +239,164 @@ static class CredentialFocusTimer
 
         if (foreThread != curThread)
             AttachThreadInput(curThread, foreThread, false);
+    }
+}
+
+/// <summary>
+/// Extracts cookies from the Edge browser's cookie database and injects
+/// them into WebView2 to skip re-authentication when the user already
+/// has a valid Edge session.
+/// </summary>
+static class EdgeCookieExtractor
+{
+    public static async Task InjectCookies(CoreWebView2 webView, string targetUrl)
+    {
+        try
+        {
+            var uri = new Uri(targetUrl);
+            string domain = uri.Host;
+            // Extract top-level domain for broad cookie matching (e.g. nasa.gov)
+            string[] parts = domain.Split('.');
+            string topDomain = parts.Length >= 2
+                ? parts[^2] + "." + parts[^1]
+                : domain;
+
+            byte[]? key = GetEncryptionKey();
+            if (key == null) return;
+
+            var cookies = ExtractCookies(key, topDomain);
+            var manager = webView.CookieManager;
+
+            int count = 0;
+            foreach (var c in cookies)
+            {
+                var cookie = manager.CreateCookie(c.Name, c.Value, c.Domain, c.Path);
+                cookie.IsSecure = c.Secure;
+                cookie.IsHttpOnly = c.HttpOnly;
+                if (c.ExpiresUtc > 0)
+                {
+                    var expires = new DateTime(1601, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                        .AddTicks(c.ExpiresUtc * 10); // Chrome epoch: microseconds since 1601
+                    cookie.Expires = expires.ToLocalTime();
+                }
+                manager.AddOrUpdateCookie(cookie);
+                count++;
+            }
+
+            if (count > 0)
+                Console.WriteLine($"Injected {count} Edge cookies for {topDomain}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Cookie injection skipped: {ex.Message}");
+        }
+    }
+
+    static byte[]? GetEncryptionKey()
+    {
+        string localState = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Microsoft", "Edge", "User Data", "Local State");
+
+        if (!File.Exists(localState)) return null;
+
+        string json = File.ReadAllText(localState);
+        using var doc = JsonDocument.Parse(json);
+        string encryptedKeyB64 = doc.RootElement
+            .GetProperty("os_crypt")
+            .GetProperty("encrypted_key")
+            .GetString()!;
+
+        byte[] encryptedKey = Convert.FromBase64String(encryptedKeyB64);
+        // Strip "DPAPI" prefix (5 bytes)
+        byte[] keyBytes = new byte[encryptedKey.Length - 5];
+        Array.Copy(encryptedKey, 5, keyBytes, 0, keyBytes.Length);
+
+        return ProtectedData.Unprotect(keyBytes, null, DataProtectionScope.CurrentUser);
+    }
+
+    record CookieData(string Name, string Value, string Domain, string Path,
+        long ExpiresUtc, bool Secure, bool HttpOnly);
+
+    static List<CookieData> ExtractCookies(byte[] key, string topDomain)
+    {
+        var result = new List<CookieData>();
+
+        string edgeDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Microsoft", "Edge", "User Data", "Default");
+
+        // Cookie DB may be in Default/Cookies or Default/Network/Cookies
+        string cookiesDb = Path.Combine(edgeDir, "Network", "Cookies");
+        if (!File.Exists(cookiesDb))
+            cookiesDb = Path.Combine(edgeDir, "Cookies");
+        if (!File.Exists(cookiesDb)) return result;
+
+        // Copy to temp to avoid DB lock from Edge
+        string tempDb = Path.Combine(Path.GetTempPath(), $"launchpad_cookies_{Guid.NewGuid():N}.db");
+        File.Copy(cookiesDb, tempDb, true);
+
+        try
+        {
+            using var conn = new SqliteConnection($"Data Source={tempDb};Mode=ReadOnly");
+            conn.Open();
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT name, encrypted_value, host_key, path,
+                       expires_utc, is_secure, is_httponly
+                FROM cookies
+                WHERE host_key LIKE @domain";
+            cmd.Parameters.AddWithValue("@domain", $"%{topDomain}%");
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                string name = reader.GetString(0);
+                byte[] encryptedValue = (byte[])reader[1];
+                string domain = reader.GetString(2);
+                string path = reader.GetString(3);
+                long expiresUtc = reader.GetInt64(4);
+                bool secure = reader.GetInt64(5) != 0;
+                bool httpOnly = reader.GetInt64(6) != 0;
+
+                string value = DecryptCookieValue(encryptedValue, key);
+                if (!string.IsNullOrEmpty(value))
+                    result.Add(new CookieData(name, value, domain, path,
+                        expiresUtc, secure, httpOnly));
+            }
+        }
+        finally
+        {
+            try { File.Delete(tempDb); } catch { }
+        }
+
+        return result;
+    }
+
+    static string DecryptCookieValue(byte[] encrypted, byte[] key)
+    {
+        if (encrypted.Length < 15) return "";
+
+        // v10/v20 prefix = AES-256-GCM encrypted
+        string prefix = Encoding.UTF8.GetString(encrypted, 0, 3);
+        if (prefix != "v10" && prefix != "v20") return "";
+
+        byte[] nonce = new byte[12];
+        Array.Copy(encrypted, 3, nonce, 0, 12);
+
+        int cipherLen = encrypted.Length - 3 - 12 - 16;
+        if (cipherLen <= 0) return "";
+
+        byte[] ciphertext = new byte[cipherLen];
+        byte[] tag = new byte[16];
+        Array.Copy(encrypted, 15, ciphertext, 0, cipherLen);
+        Array.Copy(encrypted, encrypted.Length - 16, tag, 0, 16);
+
+        byte[] plaintext = new byte[cipherLen];
+        using var aes = new AesGcm(key, 16);
+        aes.Decrypt(nonce, ciphertext, tag, plaintext);
+
+        return Encoding.UTF8.GetString(plaintext);
     }
 }

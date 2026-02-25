@@ -20,6 +20,10 @@ powershell -NoProfile -Command "Add-Type -Name Win -Namespace Native -MemberDefi
 
 set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
+cls
+
+REM --- Kill orphaned instances ---
+taskkill /f /im LaunchpadAuth.exe >nul 2>&1
 
 REM --- Set up launch log (temp file for GitHub issue body) ---
 set "LOG=%TEMP%\launchpad_launch.log"
@@ -46,6 +50,18 @@ for /f "delims=" %%H in ('git rev-parse --short HEAD 2^>nul') do (
     echo.
 )
 
+REM --- First-run config setup ---
+if not exist "%SCRIPT_DIR%config.json" (
+    if exist "%SCRIPT_DIR%config.json.example" (
+        echo  First run — creating config.json from template...
+        echo First run — creating config.json from template... >> "%LOG%"
+        copy "%SCRIPT_DIR%config.json.example" "%SCRIPT_DIR%config.json" >nul
+        echo  Config created with default URL: https://id.nasa.gov/
+        echo  Edit config.json to change the target URL.
+        echo.
+    )
+)
+
 REM --- Find the exe ---
 set "EXE="
 if exist "%SCRIPT_DIR%LaunchpadAuth.exe" set "EXE=%SCRIPT_DIR%LaunchpadAuth.exe"
@@ -54,13 +70,23 @@ if not defined EXE if exist "%SCRIPT_DIR%LaunchpadAuth\bin\Debug\net8.0-windows\
 
 if not defined EXE goto :notfound
 
+:launch
+
+REM --- Create/update desktop shortcut ---
+set "SC_NAME=NASA access LAUNCHPAD"
+for /f "delims=" %%H in ('git rev-parse --short HEAD 2^>nul') do set "SC_NAME=NASA access LAUNCHPAD - %%H"
+for %%F in ("%USERPROFILE%\Desktop\NASA access LAUNCHPAD*.lnk") do del "%%F" >nul 2>&1
+set "SC_TARGET=%SCRIPT_DIR%launch.bat"
+set "SC_WORKDIR=%SCRIPT_DIR%."
+powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) ($env:SC_NAME + '.lnk'); $sc = $ws.CreateShortcut($lnk); $sc.TargetPath = $env:SC_TARGET; $sc.WorkingDirectory = $env:SC_WORKDIR; $sc.Description = 'NASA access LAUNCHPAD'; $sc.Save()" >nul 2>&1
+
 echo  Launching: %EXE%
 echo Launching: %EXE% >> "%LOG%"
 echo.
 
-REM --- Create GitHub issue to track this session ---
+REM --- Create issue to track this session ---
 set "ISSUE_URL="
-for /f "delims=" %%I in ('gh issue create --repo brucedombrowski/NASA-access-LAUNCPAD --title "Launch: %DATE% %TIME%" --body-file "%LOG%" --label "launch-log" 2^>nul') do set "ISSUE_URL=%%I"
+for /f "delims=" %%I in ('gh issue create --title "Launch: %DATE% %TIME%" --body-file "%LOG%" --label "launch-log" 2^>nul') do set "ISSUE_URL=%%I"
 del "%LOG%" >nul 2>&1
 
 if defined ISSUE_URL (
@@ -113,6 +139,20 @@ exit /b 0
 :notfound
 echo  LaunchpadAuth.exe not found.
 echo.
+where dotnet >nul 2>&1
+if errorlevel 1 goto :nobuild
+echo  .NET SDK found — building LaunchpadAuth...
+echo .NET SDK found — building LaunchpadAuth... >> "%LOG%"
+dotnet publish LaunchpadAuth\LaunchpadAuth.csproj -c Release -r win-x64
+if exist "%SCRIPT_DIR%LaunchpadAuth\bin\Release\net8.0-windows\win-x64\publish\LaunchpadAuth.exe" (
+    set "EXE=%SCRIPT_DIR%LaunchpadAuth\bin\Release\net8.0-windows\win-x64\publish\LaunchpadAuth.exe"
+    echo.
+    echo  Build successful!
+    echo Build successful! >> "%LOG%"
+    echo.
+    goto :launch
+)
+:nobuild
 echo  Build first:
 echo    dotnet publish LaunchpadAuth\LaunchpadAuth.csproj -c Release -r win-x64
 echo.
