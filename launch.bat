@@ -68,13 +68,12 @@ if not defined EXE goto :notfound
 
 :launch
 
-REM --- Create/update desktop shortcut ---
+REM --- Create/update desktop shortcut (uses title from config.json) ---
 set "SC_NAME=NASA access LAUNCHPAD"
-for /f "delims=" %%H in ('git rev-parse --short HEAD 2^>nul') do set "SC_NAME=NASA access LAUNCHPAD - %%H"
-for %%F in ("%USERPROFILE%\Desktop\NASA access LAUNCHPAD*.lnk") do del "%%F" >nul 2>&1
+if exist "%SCRIPT_DIR%config.json" for /f "delims=" %%T in ('powershell -NoProfile -Command "(Get-Content -Raw '%SCRIPT_DIR%config.json' | ConvertFrom-Json).title" 2^>nul') do if not "%%T"=="" set "SC_NAME=%%T"
 set "SC_TARGET=%SCRIPT_DIR%launch.bat"
 set "SC_WORKDIR=%SCRIPT_DIR%."
-powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) ($env:SC_NAME + '.lnk'); $sc = $ws.CreateShortcut($lnk); $sc.TargetPath = $env:SC_TARGET; $sc.WorkingDirectory = $env:SC_WORKDIR; $sc.Description = 'NASA access LAUNCHPAD'; $sc.Save()" >nul 2>&1
+powershell -NoProfile -Command "$d = [Environment]::GetFolderPath('Desktop'); Get-ChildItem $d -Filter 'NASA access LAUNCHPAD*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Force; $ws = New-Object -ComObject WScript.Shell; $sc = $ws.CreateShortcut((Join-Path $d ($env:SC_NAME + '.lnk'))); $sc.TargetPath = $env:SC_TARGET; $sc.WorkingDirectory = $env:SC_WORKDIR; $sc.Description = $env:SC_NAME; $sc.Save()" >nul 2>&1
 
 echo  Launching: %EXE%
 echo Launching: %EXE% >> "%LOG%"
