@@ -72,58 +72,38 @@ static class Program
                     statusLabel.Text = $"Loading: {navArgs.Uri}";
                 };
 
-                bool sawAuthPage = false;
+
 
                 string statusFile = Path.Combine(
                     Path.GetTempPath(), "launchpad_auth_status.txt");
 
-                webView.CoreWebView2.NavigationCompleted += async (sender, navArgs) =>
+                int authPageVisits = 0;
+
+                webView.CoreWebView2.NavigationCompleted += (sender, navArgs) =>
                 {
                     string current = webView.CoreWebView2.Source ?? "";
+                    bool onAuthPage =
+                        current.Contains("auth.", StringComparison.OrdinalIgnoreCase);
 
-                    if (!navArgs.IsSuccess)
+                    if (onAuthPage)
                     {
-                        string error = navArgs.WebErrorStatus.ToString();
-                        statusLabel.Text = $"Error: {error}";
-                        statusLabel.BackColor = System.Drawing.Color.FromArgb(255, 200, 200);
-                        form.Text = $"{title} \u2014 Error";
-                        try { File.WriteAllText(statusFile,
-                            $"ERROR: {error} at {DateTime.Now:yyyy-MM-dd HH:mm:ss}\nURL: {current}"); }
-                        catch { }
-                        return;
-                    }
-
-                    // Check page content for LAUNCHPAD-specific auth errors
-                    try
-                    {
-                        // Look for the error heading element specifically, not full page text
-                        string errorText = await webView.CoreWebView2.ExecuteScriptAsync(
-                            "document.querySelector('h1,h2,h3,.error,.alert')?.innerText || ''");
-                        errorText = System.Text.Json.JsonSerializer.Deserialize<string>(errorText) ?? "";
-
-                        if (errorText.Contains("Smartcard authentication failed", StringComparison.OrdinalIgnoreCase)
-                            || errorText.Contains("No client certificate", StringComparison.OrdinalIgnoreCase))
+                        authPageVisits++;
+                        if (authPageVisits > 1)
                         {
+                            // Returned to auth page after already being there = auth failed
                             statusLabel.Text = "Auth failed.";
                             statusLabel.BackColor = System.Drawing.Color.FromArgb(255, 200, 200);
                             form.Text = $"{title} \u2014 Auth Failed";
                             try { File.WriteAllText(statusFile,
                                 $"AUTH FAILED at {DateTime.Now:yyyy-MM-dd HH:mm:ss}"); }
                             catch { }
-                            return;
+                        }
+                        else
+                        {
+                            statusLabel.Text = "Waiting for authentication... enter your CAC PIN when prompted.";
                         }
                     }
-                    catch { }
-
-                    bool onAuthPage =
-                        current.Contains("auth.", StringComparison.OrdinalIgnoreCase);
-
-                    if (onAuthPage)
-                    {
-                        sawAuthPage = true;
-                        statusLabel.Text = "Waiting for authentication... enter your CAC PIN when prompted.";
-                    }
-                    else if (sawAuthPage)
+                    else if (authPageVisits > 0)
                     {
                         statusLabel.Text = $"Authenticated \u2014 {current}";
                         statusLabel.BackColor = System.Drawing.Color.FromArgb(200, 255, 200);
