@@ -106,8 +106,13 @@ echo.
 
 if not defined ISSUE_URL goto :end
 
-REM --- Add close timestamp as comment ---
-gh issue comment !ISSUE_URL! --body "Session closed at %DATE% %TIME%" >nul 2>&1
+REM --- Add session summary as comment ---
+set "AUTH_STATUS=Not authenticated"
+if exist "%TEMP%\launchpad_auth_status.txt" (
+    set /p AUTH_STATUS=<"%TEMP%\launchpad_auth_status.txt"
+    del "%TEMP%\launchpad_auth_status.txt" >nul 2>&1
+)
+gh issue comment !ISSUE_URL! --body "!AUTH_STATUS!. Session closed at %DATE% %TIME%" >nul 2>&1
 
 set /p "FEEDBACK_CHOICE=  Add feedback to launch log? [y/N]: "
 if /i "!FEEDBACK_CHOICE!"=="Y" (

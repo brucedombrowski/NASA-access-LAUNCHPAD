@@ -89,6 +89,15 @@ static class Program
                     {
                         statusLabel.Text = $"Authenticated \u2014 {current}";
                         form.Text = $"{title} \u2014 Authenticated";
+                        // Write auth status for launch.bat to pick up
+                        try
+                        {
+                            string statusFile = Path.Combine(
+                                Path.GetTempPath(), "launchpad_auth_status.txt");
+                            File.WriteAllText(statusFile,
+                                $"Authenticated at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                        }
+                        catch { }
                     }
                     else
                     {
