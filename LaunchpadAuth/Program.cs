@@ -74,9 +74,25 @@ static class Program
 
                 bool sawAuthPage = false;
 
+                string statusFile = Path.Combine(
+                    Path.GetTempPath(), "launchpad_auth_status.txt");
+
                 webView.CoreWebView2.NavigationCompleted += (sender, navArgs) =>
                 {
                     string current = webView.CoreWebView2.Source ?? "";
+
+                    if (!navArgs.IsSuccess)
+                    {
+                        string error = navArgs.WebErrorStatus.ToString();
+                        statusLabel.Text = $"Error: {error}";
+                        statusLabel.BackColor = System.Drawing.Color.FromArgb(255, 200, 200);
+                        form.Text = $"{title} \u2014 Error";
+                        try { File.WriteAllText(statusFile,
+                            $"ERROR: {error} at {DateTime.Now:yyyy-MM-dd HH:mm:ss}\nURL: {current}"); }
+                        catch { }
+                        return;
+                    }
+
                     bool onAuthPage =
                         current.Contains("auth.", StringComparison.OrdinalIgnoreCase);
 
@@ -88,15 +104,10 @@ static class Program
                     else if (sawAuthPage)
                     {
                         statusLabel.Text = $"Authenticated \u2014 {current}";
+                        statusLabel.BackColor = System.Drawing.Color.FromArgb(200, 255, 200);
                         form.Text = $"{title} \u2014 Authenticated";
-                        // Write auth status for launch.bat to pick up
-                        try
-                        {
-                            string statusFile = Path.Combine(
-                                Path.GetTempPath(), "launchpad_auth_status.txt");
-                            File.WriteAllText(statusFile,
-                                $"Authenticated at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-                        }
+                        try { File.WriteAllText(statusFile,
+                            $"Authenticated at {DateTime.Now:yyyy-MM-dd HH:mm:ss}"); }
                         catch { }
                     }
                     else
