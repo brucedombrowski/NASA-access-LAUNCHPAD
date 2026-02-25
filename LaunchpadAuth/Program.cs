@@ -77,7 +77,7 @@ static class Program
                 string statusFile = Path.Combine(
                     Path.GetTempPath(), "launchpad_auth_status.txt");
 
-                webView.CoreWebView2.NavigationCompleted += (sender, navArgs) =>
+                webView.CoreWebView2.NavigationCompleted += async (sender, navArgs) =>
                 {
                     string current = webView.CoreWebView2.Source ?? "";
 
@@ -92,6 +92,32 @@ static class Program
                         catch { }
                         return;
                     }
+
+                    // Check page content for auth error messages
+                    try
+                    {
+                        string pageText = await webView.CoreWebView2.ExecuteScriptAsync(
+                            "document.body?.innerText || ''");
+                        // ExecuteScriptAsync returns JSON-encoded string
+                        pageText = System.Text.Json.JsonSerializer.Deserialize<string>(pageText) ?? "";
+
+                        if (pageText.Contains("authentication failed", StringComparison.OrdinalIgnoreCase)
+                            || pageText.Contains("certificate", StringComparison.OrdinalIgnoreCase)
+                                && pageText.Contains("error", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Grab first ~200 chars of page text as the error message
+                            string errorMsg = pageText.Length > 200
+                                ? pageText[..200].Trim() : pageText.Trim();
+                            statusLabel.Text = $"Auth failed \u2014 {errorMsg}";
+                            statusLabel.BackColor = System.Drawing.Color.FromArgb(255, 200, 200);
+                            form.Text = $"{title} \u2014 Auth Failed";
+                            try { File.WriteAllText(statusFile,
+                                $"AUTH FAILED at {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n{errorMsg}"); }
+                            catch { }
+                            return;
+                        }
+                    }
+                    catch { }
 
                     bool onAuthPage =
                         current.Contains("auth.", StringComparison.OrdinalIgnoreCase);
