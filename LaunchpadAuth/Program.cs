@@ -71,8 +71,7 @@ static class Program
                 {
                     string current = webView.CoreWebView2.Source ?? "";
                     bool onAuthPage =
-                        current.Contains("launchpad", StringComparison.OrdinalIgnoreCase)
-                        || current.Contains("auth.", StringComparison.OrdinalIgnoreCase)
+                        current.Contains("auth.", StringComparison.OrdinalIgnoreCase)
                         || current.Contains("id.nasa.gov", StringComparison.OrdinalIgnoreCase);
 
                     if (onAuthPage)
