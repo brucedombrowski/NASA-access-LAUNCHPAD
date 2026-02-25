@@ -102,8 +102,7 @@ static class Program
                         pageText = System.Text.Json.JsonSerializer.Deserialize<string>(pageText) ?? "";
 
                         if (pageText.Contains("authentication failed", StringComparison.OrdinalIgnoreCase)
-                            || pageText.Contains("certificate", StringComparison.OrdinalIgnoreCase)
-                                && pageText.Contains("error", StringComparison.OrdinalIgnoreCase))
+                            || pageText.Contains("No client certificate", StringComparison.OrdinalIgnoreCase))
                         {
                             // Grab first ~200 chars of page text as the error message
                             string errorMsg = pageText.Length > 200
