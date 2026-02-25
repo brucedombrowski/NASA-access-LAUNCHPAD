@@ -30,7 +30,7 @@ dotnet publish LaunchpadAuth/LaunchpadAuth.csproj -c Release -r win-x64
 - Opens a maximized WebView2 window to your configured URL
 - LAUNCHPAD redirects to CAC/PIV certificate selection
 - Auto-focuses the Windows Security PIN dialog so you don't miss it
-- Status bar shows auth state (waiting / authenticated)
+- Status bar shows auth state (waiting / authenticated / failed)
 
 ## Requirements
 
