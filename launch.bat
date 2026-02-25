@@ -37,10 +37,12 @@ if exist "%SCRIPT_DIR%.git" (
     del "%TEMP%\launchpad_git.tmp" >nul 2>&1
     echo.
     echo. >> "%LOG%"
-    for /f "delims=" %%H in ('git -C "%SCRIPT_DIR%." rev-parse --short HEAD 2^>nul') do (
-        echo  Commit: %%H
-        echo Commit: %%H >> "%LOG%"
-    )
+)
+
+REM --- Log commit hash ---
+for /f "delims=" %%H in ('git rev-parse --short HEAD 2^>nul') do (
+    echo  Commit: %%H
+    echo Commit: %%H >> "%LOG%"
     echo.
 )
 
