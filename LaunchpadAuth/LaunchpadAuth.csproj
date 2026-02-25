@@ -5,6 +5,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Nullable>enable</Nullable>
     <AssemblyName>LaunchpadAuth</AssemblyName>
