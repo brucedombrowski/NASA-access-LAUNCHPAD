@@ -35,10 +35,7 @@ REM --- Auto git pull if this is a git repo ---
 if exist "%SCRIPT_DIR%.git" (
     echo  Checking for updates from GitHub...
     echo Checking for updates from GitHub... >> "%LOG%"
-    git -C "%SCRIPT_DIR%." pull --ff-only > "%TEMP%\launchpad_git.tmp" 2>&1 || git -C "%SCRIPT_DIR%." pull --rebase >> "%TEMP%\launchpad_git.tmp" 2>&1
-    type "%TEMP%\launchpad_git.tmp"
-    type "%TEMP%\launchpad_git.tmp" >> "%LOG%"
-    del "%TEMP%\launchpad_git.tmp" >nul 2>&1
+    git -C "%SCRIPT_DIR%." pull --ff-only 2>&1 || git -C "%SCRIPT_DIR%." pull --rebase 2>&1
     echo.
     echo. >> "%LOG%"
 )
