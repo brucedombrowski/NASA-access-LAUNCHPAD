@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  NASA LAUNCHPAD Auth — one-click launcher
+REM  NASA access LAUNCHPAD — one-click launcher
 REM ============================================================
 REM
 REM  Double-click to open a WebView2 window to your NASA
@@ -14,7 +14,7 @@ REM ============================================================
 setlocal enabledelayedexpansion
 
 REM --- Maximize terminal window and enable UTF-8 ---
-title NASA LAUNCHPAD Auth
+title NASA access LAUNCHPAD
 chcp 65001 >nul 2>&1
 powershell -NoProfile -Command "Add-Type -Name Win -Namespace Native -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); [DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow();'; [Native.Win]::ShowWindow([Native.Win]::GetForegroundWindow(), 3)" >nul 2>&1
 

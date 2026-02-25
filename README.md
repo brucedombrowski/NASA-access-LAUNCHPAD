@@ -13,7 +13,7 @@ handles CAC/PIV smart card authentication.
 ```json
 {
   "url": "https://id.nasa.gov/",
-  "title": "NASA LAUNCHPAD Auth"
+  "title": "NASA access LAUNCHPAD"
 }
 ```
 

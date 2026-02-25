@@ -16,7 +16,7 @@ static class Program
 {
     // Default if no config provided
     const string DefaultUrl = "https://id.nasa.gov/";
-    const string DefaultTitle = "NASA LAUNCHPAD Auth";
+    const string DefaultTitle = "NASA access LAUNCHPAD";
 
     [STAThread]
     static void Main(string[] args)
