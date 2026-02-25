@@ -97,12 +97,12 @@ if /i "!FEEDBACK_CHOICE!"=="Y" (
 )
 
 echo.
-set /p "CLOSE_CHOICE=  Close this launch log issue? [Y/N]: "
+set /p "CLOSE_CHOICE=  Keep this issue open? [Y/N]: "
 if /i "!CLOSE_CHOICE!"=="Y" (
+    echo  Issue left open: !ISSUE_URL!
+) else (
     gh issue close !ISSUE_URL! >nul 2>&1
     echo  Issue closed.
-) else (
-    echo  Issue left open: !ISSUE_URL!
 )
 
 :end
