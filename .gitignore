@@ -3,3 +3,5 @@ bin/
 obj/
 publish/
 *.user
+*.exe
+.DS_Store
