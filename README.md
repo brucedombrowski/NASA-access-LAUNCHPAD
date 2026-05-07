@@ -1,4 +1,4 @@
-# NASA-access-LAUNCPAD
+# NASA-access-LAUNCHPAD
 
 Minimal WebView2 app that opens a NASA LAUNCHPAD-enabled site and
 handles CAC/PIV smart card authentication.
